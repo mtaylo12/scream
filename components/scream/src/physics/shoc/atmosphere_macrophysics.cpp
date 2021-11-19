@@ -32,6 +32,8 @@ void SHOCMacrophysics::set_grids(const std::shared_ptr<const GridsManager> grids
   m_num_cols = grid->get_num_local_dofs(); // Number of columns on this rank
   m_num_levs = grid->get_num_vertical_levels();  // Number of levels per column
 
+  std::cout << "ncols: " << m_num_cols << "     nlevs: " << m_num_levs << std::endl;
+
   // TODO: In preprocessing, we assume area is in meters. This may not
   //       always be the case.
   m_cell_area = grid->get_geometry_data("area"); // area of each cell
@@ -378,12 +380,15 @@ void SHOCMacrophysics::run_impl (const int dt)
   const auto scan_policy    = ekat::ExeSpaceUtils<KT::ExeSpace>::get_thread_range_parallel_scan_team_policy(m_num_cols, nlev_packs);
   const auto default_policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(m_num_cols, nlev_packs);
 
+  timer.StartTimer();
   // Preprocessing of SHOC inputs. Kernel contains a parallel_scan,
   // so a special TeamPolicy is required.
   Kokkos::parallel_for("shoc_preprocess",
                        scan_policy,
                        shoc_preprocess);
   Kokkos::fence();
+  timer.StopTimer();
+  pre_proc_times.push_back(timer.report_time("pre",get_comm()));
 
   // For now set the host timestep to the shoc timestep. This forces
   // number of SHOC timesteps (nadv) to be 1.
@@ -391,23 +396,56 @@ void SHOCMacrophysics::run_impl (const int dt)
   hdtime = dt;
   m_nadv = std::max(hdtime/dt,1);
 
+  timer.StartTimer();
   // Reset internal WSM variables.
   workspace_mgr.reset_internals();
+  timer.StopTimer();
+  wsm_reset_times.push_back(timer.report_time("wsm_reset",get_comm()));
 
+  timer.StartTimer();
   // Run shoc main
   SHF::shoc_main(m_num_cols, m_num_levs, m_num_levs+1, m_npbl, m_nadv, m_num_tracers, dt,
                  workspace_mgr,input,input_output,output,history_output);
+  timer.StopTimer();
+  shoc_main_times.push_back(timer.report_time("shoc_main",get_comm()));
 
+  timer.StartTimer();
   // Postprocessing of SHOC outputs
   Kokkos::parallel_for("shoc_postprocess",
                        default_policy,
                        shoc_postprocess);
   Kokkos::fence();
+  timer.StopTimer();
+  post_proc_times.push_back(timer.report_time("post",get_comm()));
 }
 // =========================================================================================
 void SHOCMacrophysics::finalize_impl()
 {
-  // Do nothing
+  EKAT_ASSERT_MSG(pre_proc_times.size() == shoc_main_times.size(), "Error!: time: sizes are not consistent.");
+  EKAT_ASSERT_MSG(post_proc_times.size() == pre_proc_times.size(), "Error!: time: sizes are not consistent.");
+
+  double total_pre_time(0), total_wsm_reset_time(0), total_shoc_main_time(0), total_post_time(0);
+  const int start_indx = shoc_main_times.size() < 2 ? 0 : 1; // If more than 1 timing exists, skip the first
+  const int num_timed_steps = shoc_main_times.size() - start_indx;
+    for (int r=start_indx; r<shoc_main_times.size(); ++r) {
+    total_pre_time += pre_proc_times[r]        / num_timed_steps;
+    total_wsm_reset_time += wsm_reset_times[r] / num_timed_steps;
+    total_shoc_main_time += shoc_main_times[r] / num_timed_steps;
+    total_post_time += post_proc_times[r]      / num_timed_steps;
+  }
+
+  double max_pre, max_wsm, max_shoc_main, max_post;
+  get_comm().all_reduce(&total_pre_time,&max_pre,1,MPI_MAX);
+  get_comm().all_reduce(&total_wsm_reset_time,&max_wsm,1,MPI_MAX);
+  get_comm().all_reduce(&total_shoc_main_time,&max_shoc_main,1,MPI_MAX);
+  get_comm().all_reduce(&total_post_time,&max_post,1,MPI_MAX);
+
+  if (get_comm().am_i_root()) {
+      std::cout << "     preproc-time:    " << max_pre << std::endl
+                << "     wsm-reset-time:  " << max_wsm << std::endl
+                << "     shocmain-time:   " << max_shoc_main << std::endl
+                << "     postproc-time:   " << max_post << std::endl;
+  }
 }
 // =========================================================================================
 

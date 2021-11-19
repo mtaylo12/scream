@@ -448,6 +448,12 @@ protected:
 
   // WSM for internal local variables
   ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr;
+
+private:
+
+  ADTimer timer;
+  std::vector<double> pre_proc_times,wsm_reset_times,shoc_main_times,post_proc_times;
+
 }; // class SHOCMacrophysics
 
 } // namespace scream

@@ -409,6 +409,29 @@ protected:
   //       logger, we might as well expose the member to all derived classes.
   std::shared_ptr<logger_t>  m_atm_logger;
 
+  // Timing struct
+  struct ADTimer {
+    std::chrono::time_point<std::chrono::steady_clock> start, finish;
+
+    void StartTimer() { start = std::chrono::steady_clock::now(); }
+    void StopTimer() { finish = std::chrono::steady_clock::now(); }
+
+    double report_time(const std::string title, ekat::Comm comm, const bool output_each_iteration=false/*, const int ncols*/) {
+      auto duration = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
+      const double report_time = 1e-6*duration.count();
+
+      if (output_each_iteration) {
+        std::cout << title
+                  << ": time-rank-" << comm.rank() << ": " << report_time
+                  //<< " : thousand-cols-per-sec: " << thousand_cols_per_sec
+                  << std::endl;
+      }
+      return report_time;
+    }
+  };
+  ADTimer timer;
+  std::vector<double> run_time;
+
 private:
   // Called from initialize, this method creates the m_[fields|groups]_[in|out]_pointers
   // maps, which are used inside the get_[field|group]_[in|out] methods.

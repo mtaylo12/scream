@@ -280,12 +280,6 @@ void RRTMGPRadiation::run_impl (const int dt) {
   using PC = scream::physics::Constants<Real>;
   using CO = scream::ColumnOps<DefaultDevice,Real>;
 
-  // get a host copy of lat/lon 
-  auto h_lat  = Kokkos::create_mirror_view(m_lat);
-  auto h_lon  = Kokkos::create_mirror_view(m_lon);
-  Kokkos::deep_copy(h_lat,m_lat);
-  Kokkos::deep_copy(h_lon,m_lon);
-
   // Get data from the FieldManager
   auto d_pmid = get_field_in("p_mid").get_view<const Real**>();
   auto d_pint = get_field_in("p_int").get_view<const Real**>();
@@ -391,7 +385,14 @@ void RRTMGPRadiation::run_impl (const int dt) {
                    obliqr, &delta, &eccf);
 
   // Copy data from the FieldManager to the YAKL arrays
+  timer.StartTimer();
   {
+    // get a host copy of lat/lon
+    auto h_lat  = Kokkos::create_mirror_view(m_lat);
+    auto h_lon  = Kokkos::create_mirror_view(m_lon);
+    Kokkos::deep_copy(h_lat,m_lat);
+    Kokkos::deep_copy(h_lon,m_lon);
+
     // Determine the cosine zenith angle
     // NOTE: Since we are bridging to F90 arrays this must be done on HOST and then
     //       deep copied to a device view.
@@ -487,7 +488,10 @@ void RRTMGPRadiation::run_impl (const int dt) {
     });
   }
   Kokkos::fence();
+  timer.StopTimer();
+  copy_to_yakl_times.push_back(timer.report_time("copy_to_yakl",get_comm()));
 
+  timer.StartTimer();
   // Populate GasConcs object to pass to RRTMGP driver
   auto tmp2d = m_buffer.tmp2d;
   for (int igas = 0; igas < m_ngas; igas++) {
@@ -534,7 +538,10 @@ void RRTMGPRadiation::run_impl (const int dt) {
     sfc_alb_dir_vis, sfc_alb_dir_nir,
     sfc_alb_dif_vis, sfc_alb_dif_nir,
     sfc_alb_dir, sfc_alb_dif);
+  timer.StopTimer();
+  pre_proc_times.push_back(timer.report_time("preproc",get_comm()));
 
+  timer.StartTimer();
   // Run RRTMGP driver
   rrtmgp::rrtmgp_main(
     m_ncol, m_nlay,
@@ -550,7 +557,10 @@ void RRTMGPRadiation::run_impl (const int dt) {
     lw_bnd_flux_up, lw_bnd_flux_dn, 
     eccf, m_atm_logger
   );
+  timer.StopTimer();
+  rrtmgp_main_times.push_back(timer.report_time("rrtmgp_main",get_comm()));
 
+  timer.StartTimer();
   // Compute and apply heating rates
   auto sw_heating  = m_buffer.sw_heating;
   auto lw_heating  = m_buffer.lw_heating;
@@ -612,10 +622,37 @@ void RRTMGPRadiation::run_impl (const int dt) {
       });
     });
   }
+  timer.StopTimer();
+  post_proc_times.push_back(timer.report_time("postproc",get_comm()));
 }
 // =========================================================================================
 
 void RRTMGPRadiation::finalize_impl  () {
+  EKAT_ASSERT_MSG(rrtmgp_main_times.size() == copy_to_yakl_times.size(), "Error!: time: sizes are not consistent.");
+
+  double total_copy_time(0), total_pre_time(0), total_rrtmgp_main_time(0), total_post_time(0);
+  const int start_indx = rrtmgp_main_times.size() < 2 ? 0 : 1; // If more than 1 timing exists, skip the first
+  const int num_timed_steps = rrtmgp_main_times.size() - start_indx;
+  for (int r=start_indx; r<rrtmgp_main_times.size(); ++r) {
+    total_copy_time += copy_to_yakl_times[r]       / num_timed_steps;
+    total_pre_time += pre_proc_times[r]            / num_timed_steps;
+    total_rrtmgp_main_time += rrtmgp_main_times[r] / num_timed_steps;
+    total_post_time += post_proc_times[r]          / num_timed_steps;
+  }
+
+  double max_copy,max_pre,max_rrtmgp_main, max_post;
+  get_comm().all_reduce(&total_copy_time,&max_copy,1,MPI_MAX);
+  get_comm().all_reduce(&total_pre_time,&max_pre,1,MPI_MAX);
+  get_comm().all_reduce(&total_rrtmgp_main_time,&max_rrtmgp_main,1,MPI_MAX);
+  get_comm().all_reduce(&total_post_time,&max_post,1,MPI_MAX);
+
+  if (get_comm().am_i_root()) {
+      std::cout << "     copy-yakl-time:  " << max_copy << std::endl
+                << "     preproc-time:    " << max_pre << std::endl
+                << "     rrtmgpmain-time: " << max_rrtmgp_main << std::endl
+                << "     postproc-time:   " << max_post << std::endl;
+  }
+
   gas_concs.reset();
   rrtmgp::rrtmgp_finalize();
 

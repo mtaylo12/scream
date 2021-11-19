@@ -104,6 +104,11 @@ protected:
   // The dynamics and reference grids
   std::shared_ptr<const AbstractGrid>  m_dyn_grid;
   std::shared_ptr<const AbstractGrid>  m_ref_grid;
+
+private:
+
+  ADTimer timer;
+  std::vector<double> pre_proc_times, homme_times, post_proc_times;
 };
 
 } // namespace scream

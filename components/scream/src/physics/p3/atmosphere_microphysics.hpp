@@ -366,6 +366,11 @@ protected:
   // Iteration count is internal to P3 and keeps track of the number of times p3_main has been called.
   // infrastructure.it is passed as an arguement to p3_main and is used for identifying which iteration an error occurs.
 
+private:
+
+  ADTimer timer;
+  std::vector<double> pre_proc_times, wsm_reset_times, p3_main_times, post_proc_times;
+
 }; // class P3Microphysics
 
 } // namespace scream

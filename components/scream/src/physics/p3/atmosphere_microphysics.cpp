@@ -281,6 +281,31 @@ void P3Microphysics::initialize_impl (const RunType /* run_type */)
 // =========================================================================================
 void P3Microphysics::finalize_impl()
 {
+  EKAT_ASSERT_MSG(pre_proc_times.size() == p3_main_times.size(), "Error!: time: sizes are not consistent.");
+
+  double total_pre_time(0), total_wsm_reset_time(0), total_p3_main_time(0), total_post_time(0);
+  const int start_indx = p3_main_times.size() < 2 ? 0 : 1; // If more than 1 timing exists, skip the first
+  const int num_timed_steps = p3_main_times.size() - start_indx;
+  for (int r=start_indx; r<p3_main_times.size(); ++r) {
+    total_pre_time += pre_proc_times[r]        / num_timed_steps;
+    total_wsm_reset_time += wsm_reset_times[r] / num_timed_steps;
+    total_p3_main_time += p3_main_times[r]     / num_timed_steps;
+    total_post_time += post_proc_times[r]      / num_timed_steps;
+  }
+
+  double max_pre, max_wsm, max_p3_main, max_post;
+  get_comm().all_reduce(&total_pre_time,&max_pre,1,MPI_MAX);
+  get_comm().all_reduce(&total_wsm_reset_time,&max_wsm,1,MPI_MAX);
+  get_comm().all_reduce(&total_p3_main_time,&max_p3_main,1,MPI_MAX);
+  get_comm().all_reduce(&total_post_time,&max_post,1,MPI_MAX);
+
+  if (get_comm().am_i_root()) {
+      std::cout << "     preproc-time:    " << max_pre << std::endl
+                << "     wsm-reset-time:  " << max_wsm << std::endl
+                << "     p3main-time:     " << max_p3_main << std::endl
+                << "     postproc-time:   " << max_post << std::endl;
+  }
+
   // Do nothing
 }
 // =========================================================================================

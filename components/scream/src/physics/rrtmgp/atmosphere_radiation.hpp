@@ -162,6 +162,11 @@ protected:
 
   // Struct which contains local variables
   Buffer m_buffer;
+
+private:
+
+  ADTimer timer;
+  std::vector<double> copy_to_yakl_times, pre_proc_times, rrtmgp_main_times, post_proc_times;
 };  // class RRTMGPRadiation
 
 }  // namespace scream

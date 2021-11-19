@@ -38,6 +38,8 @@ void AtmosphereProcess::initialize (const TimeStamp& t0, const RunType run_type)
 }
 
 void AtmosphereProcess::run (const int dt) {
+  timer.StartTimer();
+
   if (m_params.get("Enable Precondition Checks", true)) {
     // Run 'pre-condition' property checks stored in this AP
     run_precondition_checks();
@@ -65,9 +67,27 @@ void AtmosphereProcess::run (const int dt) {
     // Update all output fields time stamps
     update_time_stamps ();
   }
+
+  timer.StopTimer();
+  run_time.push_back(timer.report_time(name()+"-run",get_comm(),false));
 }
 
 void AtmosphereProcess::finalize (/* what inputs? */) {
+  double time_total(0);
+  const int start_indx = run_time.size() < 2 ? 0 : 1; // If more than 1 timing exists, skip the first
+  const int num_timed_steps = run_time.size() - start_indx;
+  for (int r=start_indx; r<run_time.size(); ++r) {
+    time_total += run_time[r] / num_timed_steps;
+  }
+
+  double max_total, min_total;
+  get_comm().all_reduce(&time_total,&max_total,1,MPI_MAX);
+  get_comm().all_reduce(&time_total,&min_total,1,MPI_MIN);
+
+  if (get_comm().am_i_root()) {
+      std::cout << name()+"-run-time(max): " << max_total << "    (min): " << min_total << std::endl;
+  }
+
   finalize_impl(/* what inputs? */);
 }
 

@@ -396,7 +396,6 @@ void HommeDynamics::initialize_impl (const RunType run_type)
 void HommeDynamics::run_impl (const int dt)
 {
   try {
-
     // Note: Homme's step lasts homme_dt*max(dt_remap_factor,dt_tracers_factor), and it must divide dt.
     // We neeed to compute dt/homme_dt, and subcycle homme that many times
 
@@ -407,17 +406,27 @@ void HommeDynamics::run_impl (const int dt)
     auto& params = Homme::Context::singleton().get<Homme::SimulationParams>();
     params.nsplit = nsplit;
 
+    timer.StartTimer();
     Kokkos::fence();
     homme_pre_process (dt);
+    timer.StopTimer();
+    pre_proc_times.push_back(timer.report_time("pre",get_comm()));
 
+    timer.StartTimer();
     for (int subiter=0; subiter<nsplit; ++subiter) {
       Kokkos::fence();
       prim_run_f90 ();
     }
+    timer.StopTimer();
+    homme_times.push_back(timer.report_time("homme",get_comm()));
 
+    timer.StartTimer();
     // Post process Homme's output, to produce what the rest of Atm expects
     Kokkos::fence();
     homme_post_process ();
+    timer.StopTimer();
+    post_proc_times.push_back(timer.report_time("post",get_comm()));
+
   } catch (std::exception& e) {
     EKAT_ERROR_MSG(e.what());
   } catch (...) {
@@ -427,6 +436,29 @@ void HommeDynamics::run_impl (const int dt)
 
 void HommeDynamics::finalize_impl (/* what inputs? */)
 {
+  EKAT_ASSERT_MSG(pre_proc_times.size() == homme_times.size(), "Error!: time: sizes are not consistent.");
+  EKAT_ASSERT_MSG(post_proc_times.size() == pre_proc_times.size(), "Error!: time: sizes are not consistent.");
+
+  double total_pre_time(0), total_homme_time(0), total_post_time(0);
+  const int start_indx = homme_times.size() < 2 ? 0 : 1; // If more than 1 timing exists, skip the first
+  const int num_timed_steps = homme_times.size() - start_indx;
+    for (int r=start_indx; r<homme_times.size(); ++r) {
+    total_pre_time += pre_proc_times[r]   / num_timed_steps;
+    total_homme_time += homme_times[r]    / num_timed_steps;
+    total_post_time += post_proc_times[r] / num_timed_steps;
+  }
+
+  double max_pre, max_homme, max_post;
+  get_comm().all_reduce(&total_pre_time,&max_pre,1,MPI_MAX);
+  get_comm().all_reduce(&total_homme_time,&max_homme,1,MPI_MAX);
+  get_comm().all_reduce(&total_post_time,&max_post,1,MPI_MAX);
+
+  if (get_comm().am_i_root()) {
+      std::cout << "     preproc-time:    " << max_pre << std::endl
+                << "     homme-time:      " << max_homme << std::endl
+                << "     postproc-time:   " << max_post << std::endl;
+  }
+
   prim_finalize_f90();
 
   // This class is done needing Homme's context, so remove myself as customer
