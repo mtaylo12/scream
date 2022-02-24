@@ -1,5 +1,7 @@
 #include "atmosphere_prescribed_aerosol.hpp"
 
+#include "share/property_checks/field_lower_bound_check.hpp"
+#include "share/property_checks/field_within_interval_check.hpp"
 #include "share/util/scream_time_stamp.hpp"
 #include "share/io/scream_scorpio_interface.hpp"
 
@@ -168,6 +170,12 @@ void SPA::initialize_impl (const RunType /* run_type */)
   SPATimeState.inited = false;
   SPATimeState.current_month = ts.get_month();
   SPAFunc::update_spa_timestate(m_spa_data_file,m_nswbands,m_nlwbands,ts,SPAHorizInterp,SPATimeState,SPAData_start,SPAData_end);
+
+  const auto& grid_name = m_params.get<std::string>("Grid");
+  add_postcondition_check<FieldLowerBoundCheck>(get_field_out("aero_tau_lw",grid_name),0,false);
+  add_postcondition_check<FieldLowerBoundCheck>(get_field_out("aero_tau_sw",grid_name),0,false);
+  add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("aero_ssa_sw",grid_name),0,1,false);
+  add_postcondition_check<FieldWithinIntervalCheck>(get_field_out("aero_g_sw",grid_name),-1,1,false);
 }
 
 // =========================================================================================
