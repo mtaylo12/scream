@@ -7,6 +7,8 @@ namespace control {
 
 void SurfaceCoupling::do_export (const bool init_phase)
 {
+  std::cout << "SurfaceCoupling DOEXPORT-START" << std::endl;
+
   if (m_num_scream_exports==0) {
     return;
   }
@@ -109,6 +111,8 @@ void SurfaceCoupling::do_export (const bool init_phase)
 
   // Deep copy fields from device to cpl host array
   Kokkos::deep_copy(m_cpl_exports_view_h,m_cpl_exports_view_d);
+
+  std::cout << "SurfaceCoupling DOEXPORT-END" << std::endl;
 }
 
 } // namespace control

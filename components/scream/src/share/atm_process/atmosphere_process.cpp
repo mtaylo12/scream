@@ -32,12 +32,18 @@ AtmosphereProcess (const ekat::Comm& comm, const ekat::ParameterList& params)
 }
 
 void AtmosphereProcess::initialize (const TimeStamp& t0, const RunType run_type) {
+  std::cout << this->name() << " INIT-START" << std::endl;                                                                                                                      
   set_fields_and_groups_pointers();
   m_time_stamp = t0;
   initialize_impl(run_type);
+
+  std::cout << this->name() << " INIT-END" << std::endl;
 }
 
 void AtmosphereProcess::run (const int dt) {
+
+  std::cout << this->name() << " RUN-START" << std::endl;
+
   if (m_params.get("Enable Precondition Checks", true)) {
     // Run 'pre-condition' property checks stored in this AP
     run_precondition_checks();
@@ -61,10 +67,13 @@ void AtmosphereProcess::run (const int dt) {
   }
 
   m_time_stamp += dt;
+
   if (m_update_time_stamps) {
     // Update all output fields time stamps
     update_time_stamps ();
   }
+
+  std::cout << this->name() << " RUN-END" << std::endl;
 }
 
 void AtmosphereProcess::finalize (/* what inputs? */) {
