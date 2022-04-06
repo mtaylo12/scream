@@ -112,11 +112,11 @@ void micro_p3_utils_init () {
                  c::CpLiq, c::Tmelt, c::Pi, c::iulog, c::masterproc);
 }
 
-void p3_init (const bool write_tables) {
+void p3_init (const bool write_tables,
+              const char*& dir) {
   static bool is_init = false;
   if (!is_init) {
     micro_p3_utils_init();
-    static const char* dir = SCREAM_DATA_DIR;
     Int info;
     p3_init_c(&dir, &info, write_tables);
     EKAT_REQUIRE_MSG(info == 0, "p3_init_c returned info " << info);

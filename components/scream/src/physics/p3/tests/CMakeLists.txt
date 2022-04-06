@@ -94,3 +94,34 @@ if (SCREAM_ENABLE_BASELINE_TESTS)
   add_dependencies(baseline     p3_baseline_f90)
   add_dependencies(baseline_cxx p3_baseline_cxx)
 endif()
+
+# Executable that can be used to re-generate tables, in case P3 changes,
+# and we need to update the tables
+add_executable(p3_generate_tables p3_generate_tables.cpp)
+target_link_libraries(p3_generate_tables p3)
+
+# Check that the tables dowloaded match the ones we would generate internally
+file (MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/data)
+CreateUnitTestFromExec (p3_generate_tables p3_generate_tables
+    EXE_ARGS --use-colour no ${CMAKE_CURRENT_BINARY_DIR}/data
+    PROPERTIES FIXTURES_SETUP generated_tables)
+
+foreach (table ${P3_GENERATED_TABLES})
+  set (file1 ${CMAKE_CURRENT_BINARY_DIR}/data/${table})
+  set (file2 ${SCREAM_BIN_DIR}/data/${table})
+  add_test (NAME p3_tables_check_${table}
+    COMMAND ${CMAKE_COMMAND} -E compare_files ${file1} ${file2})
+  set_tests_properties(p3_tables_check_${table}
+    PROPERTIES FIXTURES_REQUIRED generated_tables)
+endforeach()
+
+if(${CMAKE_VERSION} VERSION_LESS "3.17.0")
+  set (rm_cmd remove_dir)
+else()
+  set (rm_cmd rm)
+endif()
+
+add_test (NAME p3_tables_cleanup
+  COMMAND ${CMAKE_COMMAND} -E ${rm_cmd} ${CMAKE_CURRENT_BINARY_DIR}/data)
+set_tests_properties (p3_tables_cleanup
+  PROPERTIES FIXTURES_CLEANUP generated_tables)
