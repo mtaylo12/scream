@@ -1,3 +1,7 @@
+# scream_abortutils uses shr_sys_abort
+include(CsmShare)
+CreateCsmShareTarget()
+
 set(PHYSICS_SHARE_SRCS
   physics_share_f2c.F90
   physics_share.cpp

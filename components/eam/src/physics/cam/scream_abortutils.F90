@@ -19,36 +19,15 @@ contains
     ! the simulation
     !-------------------------------------------------
 
-#ifdef SPMD
-    !Modules to use when SCREAM run with MPI under E3SM
-    use micro_p3_utils, only:iulog_e3sm
-#endif
+    use shr_abort_mod, only: shr_abort => shr_abort_abort
 
-    implicit none
-
-    !intent-ins
     character(len=*), intent(in), optional :: msg
-#ifdef SPMD
-#include "mpif.h"
-    integer:: ierr
-#endif
 
-
-#ifdef SPMD
-    !for model runs with MPI
     if(present(msg)) then
-       write(iulog_e3sm,*)msg
+      call shr_abort(msg,-1)
     else
-       write(iulog_e3sm,*)'ERROR: Aborting...'
+      call shr_abort('ERROR: Aborting...',-1)
     endif
-    call MPI_ABORT(MPI_COMM_WORLD, -1, ierr)
-#else
-    !Stop the model when run in non-MPI mode
-    write(*,*)'ERROR: Aborting...'
-    if(present(msg)) write(*,*)trim(adjustl(msg))
-
-    call abort()
-#endif
 
   end subroutine endscreamrun
 
