@@ -92,44 +92,54 @@ tweaking their $case/namelist_scream.xml file.
   <file name="data/scream_input.yaml" format="yaml">
     <Atmosphere__Driver>
       <Atmosphere__Processes>
-        <Number__of__Entries>6</Number__of__Entries>
+        <Number__of__Entries>3</Number__of__Entries>
         <Schedule__Type>Sequential</Schedule__Type>
         <Process__0>
           <Process__Name>Homme</Process__Name>
           <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
           <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
           <Grid>Dynamics</Grid>
-          <Vertical__Coordinate__Filename>${DIN_LOC_ROOT}/atm/scream/init/init_ne4np4.nc</Vertical__Coordinate__Filename>
-          <Vertical__Coordinate__Filename COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/scream-aquaplanet_init_ne4np4_L72_20211202.nc</Vertical__Coordinate__Filename>
+          <Vertical__Coordinate__Filename hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/init_ne4np4.nc</Vertical__Coordinate__Filename>
+          <Vertical__Coordinate__Filename hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/screami_ne30np4L72_20220329.nc</Vertical__Coordinate__Filename>
+          <Vertical__Coordinate__Filename hgrid="ne4np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/scream-aquaplanet_init_ne4np4_L72_20211202.nc</Vertical__Coordinate__Filename>
           <Moisture>moist</Moisture>
         </Process__0>
         <Process__1>
-          <Process__Name>SHOC</Process__Name>
-          <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
-          <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
-          <Grid>Physics GLL</Grid>
+          <Process__Name>Group</Process__Name>
+          <Number__of__Entries>4</Number__of__Entries>
+          <Schedule__Type>Sequential</Schedule__Type>
+          <Number__of__Subcycles>6</Number__of__Subcycles>
+          <Process__0>
+            <Process__Name>SHOC</Process__Name>
+            <Number__of__Subcycles>1</Number__of__Subcycles>
+            <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
+            <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
+            <Grid>Physics GLL</Grid>
+          </Process__0>
+          <Process__1>
+            <Process__Name>CldFraction</Process__Name>
+            <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
+            <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
+            <Grid>Physics GLL</Grid>
+          </Process__1>
+          <Process__2>
+            <Process__Name>SPA</Process__Name>
+            <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
+            <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
+            <Grid>Physics GLL</Grid>
+            <SPA__Remap__File>none</SPA__Remap__File>
+            <SPA__Data__File hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_scream.nc</SPA__Data__File>
+            <SPA__Data__File hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne30_scream.nc</SPA__Data__File>
+          </Process__2>
+          <Process__3>
+            <Process__Name>P3</Process__Name>
+            <Number__of__Subcycles>6</Number__of__Subcycles>
+            <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
+            <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
+            <Grid>Physics GLL</Grid>
+          </Process__3>
         </Process__1>
         <Process__2>
-          <Process__Name>CldFraction</Process__Name>
-          <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
-          <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
-          <Grid>Physics GLL</Grid>
-        </Process__2>
-        <Process__3>
-          <Process__Name>SPA</Process__Name>
-          <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
-          <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
-          <Grid>Physics GLL</Grid>
-          <SPA__Remap__File>none</SPA__Remap__File>
-          <SPA__Data__File>${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_scream.nc</SPA__Data__File>
-        </Process__3>
-        <Process__4>
-          <Process__Name>P3</Process__Name>
-          <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
-          <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
-          <Grid>Physics GLL</Grid>
-        </Process__4>
-        <Process__5>
           <Process__Name>RRTMGP</Process__Name>
           <Enable__Postcondition__Checks>True</Enable__Postcondition__Checks>
           <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
@@ -142,7 +152,7 @@ tweaking their $case/namelist_scream.xml file.
           <Orbital__Obliquity COMPSET=".*SCREAM%AQUA.*">0</Orbital__Obliquity>
           <Orbital__MVELP>-9999</Orbital__MVELP>
           <Orbital__MVELP COMPSET=".*SCREAM%AQUA.*">0</Orbital__MVELP>
-        </Process__5>
+        </Process__2>
       </Atmosphere__Processes>
       <Grids__Manager>
         <Type>Dynamics Driven</Type>
@@ -154,8 +164,9 @@ tweaking their $case/namelist_scream.xml file.
       <Initial__Conditions>
         <Restart__Casename>${CASE}</Restart__Casename>
         <Physics__GLL>
-          <Filename>${DIN_LOC_ROOT}/atm/scream/init/init_ne4np4.nc</Filename>
-          <Filename COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/scream-aquaplanet_init_ne4np4_L72_20211202.nc</Filename>
+          <Filename hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/init_ne4np4.nc</Filename>
+          <Filename hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/screami_ne30np4L72_20220329.nc</Filename>
+          <Filename hgrid="ne4np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/scream-aquaplanet_init_ne4np4_L72_20211202.nc</Filename>
           <T_mid_prev>T_mid</T_mid_prev>
           <horiz_winds_prev>horiz_winds</horiz_winds_prev>
           <w_int>0.0</w_int>
@@ -167,7 +178,7 @@ tweaking their $case/namelist_scream.xml file.
         <Model__Restart>
           <Casename>${CASE}</Casename>
           <Output__Control>
-            <Frequency>${REST_N}</Frequency>
+            <Frequency>2000</Frequency>
             <Frequency__Units>INVALID</Frequency__Units>
             <Frequency__Units REST_OPTION="nstep*">Steps</Frequency__Units>
           </Output__Control>
@@ -186,7 +197,8 @@ tweaking their $case/namelist_scream.xml file.
         ${DIN_LOC_ROOT}/atm/scream/tables/revap_table_vals.dat8,
         ${DIN_LOC_ROOT}/atm/scream/tables/vn_table_vals.dat8,
         ${DIN_LOC_ROOT}/atm/scream/tables/vm_table_vals.dat8,
-        ${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_scream.nc
+        ${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_scream.nc,
+        ${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne30_scream.nc
     </Input__Files>
     </SCREAM>
   </file>
@@ -195,27 +207,39 @@ tweaking their $case/namelist_scream.xml file.
     <ctl_nl>
       <cubed_sphere_map>0</cubed_sphere_map>
       <disable_diagnostics>False</disable_diagnostics>
-      <dt_remap_factor>1</dt_remap_factor>
+      <dt_remap_factor>2</dt_remap_factor>
+
       <dt_tracer_factor>1</dt_tracer_factor>
+
       <hypervis_order>2</hypervis_order>
       <hypervis_scaling>3.0</hypervis_scaling>
       <hypervis_subcycle>1</hypervis_subcycle>
+      <hypervis_subcycle_q>1</hypervis_subcycle_q>
       <hypervis_subcycle_tom>1</hypervis_subcycle_tom>
+
       <nu>3.4e-08</nu>
+
       <nu_top>250000.0</nu_top>
       <se_ftype>0</se_ftype>
       <se_geometry>sphere</se_geometry>
       <se_limiter_option>9</se_limiter_option>
+
       <se_ne>4</se_ne>
+      <se_ne hgrid="ne30np4">30</se_ne>
+
       <se_nsplit>-1</se_nsplit>
       <se_partmethod>4</se_partmethod>
       <se_topology>cube</se_topology>
-      <se_tstep>300</se_tstep>
+
+      <se_tstep>600</se_tstep>
+      <se_tstep hgrid="ne30np4">300</se_tstep>
+
       <statefreq>9999</statefreq>
       <theta_advect_form>1</theta_advect_form>
       <theta_hydrostatic_mode>True</theta_hydrostatic_mode>
       <tstep_type>5</tstep_type>
       <vert_remap_q_alg>10</vert_remap_q_alg>
+      <transport_alg>0</transport_alg>
     </ctl_nl>
   </file>
 
