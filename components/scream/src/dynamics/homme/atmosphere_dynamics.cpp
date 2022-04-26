@@ -1042,17 +1042,24 @@ void HommeDynamics::initialize_homme_state () {
   const auto phis_dyn_view = m_helper_fields.at("phis_dyn").get_view<const Real***>();
   const auto phi_int_view = m_helper_fields.at("phi_int_dyn").get_view<Pack*****>();
 
+  using KT = KokkosTypes<DefaultDevice>;
+  KT::view_ND<Pack,4> p_int_tmp("p_int_tmp",nelem,NGP,NGP,npacks_int);
+  KT::view_ND<Pack,4> p_mid_tmp("p_mid_tmp",nelem,NGP,NGP,npacks_mid);
+
   // Need two temporaries, for pi_mid and pi_int
-  ekat::WorkspaceManager<Pack,DefaultDevice> wsm(npacks_int,2,policy);
+  //ekat::WorkspaceManager<Pack,DefaultDevice> wsm(npacks_int,2,policy);
   Kokkos::parallel_for(policy, KOKKOS_LAMBDA (const KT::MemberType& team) {
     const int ie  =  team.league_rank() / (NGP*NGP);
     const int igp = (team.league_rank() / NGP) % NGP;
     const int jgp =  team.league_rank() % NGP;
 
     // Compute p_mid
-    auto ws = wsm.get_workspace(team);
-    auto p_int = ws.take("p_int");
-    auto p_mid = ws.take("p_mid");
+    //auto ws = wsm.get_workspace(team);
+    //auto p_int = ws.take("p_int");
+    //auto p_mid = ws.take("p_mid");
+
+   auto p_int = ekat::subview(p_int_tmp, ie,igp,jgp);
+   auto p_mid = ekat::subview(p_mid_tmp, ie,igp,jgp);
 
     auto dp = ekat::subview(dp_view,ie,n0,igp,jgp);
 
@@ -1080,8 +1087,8 @@ void HommeDynamics::initialize_homme_state () {
     ColOps::column_scan<false>(team,nlevs,dphi,phi_int,phis_dyn_view(ie,igp,jgp));
 
     // Release the scratch mem
-    ws.release(p_int);
-    ws.release(p_mid);
+    //ws.release(p_int);
+    //ws.release(p_mid);
   });
 
   // Update internal fields time stamp
