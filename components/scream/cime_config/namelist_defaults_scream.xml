@@ -100,7 +100,7 @@ tweaking their $case/namelist_scream.xml file.
           <Enable__Precondition__Checks>True</Enable__Precondition__Checks>
           <Grid>Dynamics</Grid>
           <Vertical__Coordinate__Filename hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/init_ne4np4.nc</Vertical__Coordinate__Filename>
-          <Vertical__Coordinate__Filename hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/screami_ne30np4L72_20220329.nc</Vertical__Coordinate__Filename>
+          <Vertical__Coordinate__Filename hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/screami_ne30np4L72_20220413.nc</Vertical__Coordinate__Filename>
           <Vertical__Coordinate__Filename hgrid="ne4np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/scream-aquaplanet_init_ne4np4_L72_20211202.nc</Vertical__Coordinate__Filename>
           <Moisture>moist</Moisture>
         </Process__0>
@@ -165,7 +165,7 @@ tweaking their $case/namelist_scream.xml file.
         <Restart__Casename>${CASE}</Restart__Casename>
         <Physics__GLL>
           <Filename hgrid="ne4np4">${DIN_LOC_ROOT}/atm/scream/init/init_ne4np4.nc</Filename>
-          <Filename hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/screami_ne30np4L72_20220329.nc</Filename>
+          <Filename hgrid="ne30np4">${DIN_LOC_ROOT}/atm/scream/init/screami_ne30np4L72_20220413.nc</Filename>
           <Filename hgrid="ne4np4" COMPSET=".*SCREAM%AQUA.*">${DIN_LOC_ROOT}/atm/scream/init/scream-aquaplanet_init_ne4np4_L72_20211202.nc</Filename>
           <T_mid_prev>T_mid</T_mid_prev>
           <horiz_winds_prev>horiz_winds</horiz_winds_prev>
@@ -198,7 +198,8 @@ tweaking their $case/namelist_scream.xml file.
         ${DIN_LOC_ROOT}/atm/scream/tables/vn_table_vals.dat8,
         ${DIN_LOC_ROOT}/atm/scream/tables/vm_table_vals.dat8,
         ${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne4_scream.nc,
-        ${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne30_scream.nc
+        ${DIN_LOC_ROOT}/atm/scream/init/spa_file_unified_and_complete_ne30_scream.nc,
+	${DIN_LOC_ROOT}/atm/scream/init/screami_ne30np4L72_20220413.nc
     </Input__Files>
     </SCREAM>
   </file>
