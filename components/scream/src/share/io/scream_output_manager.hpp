@@ -110,6 +110,8 @@ protected:
   std::string compute_filename_root (const IOControl& control, const IOFileSpecs& file_specs) const;
   std::string find_filename_in_rpointer (const std::string& casename, const std::string& suffix) const;
 
+  void init_output_file (const IOControl& control, IOFileSpecs& filespecs);
+
   // Craft the restart parameter list
   void set_params (const ekat::ParameterList& params,
                    const std::map<std::string,std::shared_ptr<fm_type>>& field_mgrs);
