@@ -106,6 +106,7 @@ build_grids (const std::set<std::string>& grid_names)
 {
   // Retrieve all physics grids codes
   std::vector<int> pg_codes;
+  std::vector<std::string> pg_names;
   for (const auto& gn : grid_names) {
     // Sanity check first
     EKAT_REQUIRE_MSG (supported_grids().count(gn)==1,
@@ -116,24 +117,21 @@ build_grids (const std::set<std::string>& grid_names)
     // We only need to store the phys grids codes.
     if (code>=0) {
       pg_codes.push_back(code);
+      pg_names.push_back(gn);
     }
   }
   pg_codes.push_back(m_grid_codes.at(m_ref_grid_name));
   const int* codes_ptr = pg_codes.data();
   init_grids_f90 (codes_ptr,pg_codes.size());
 
-  // We know we need the dyn grid, so build it
+  // Build dynamics first
   build_dynamics_grid ();
 
-  for (const auto& gn : grid_names) {
-    if (gn!="Dynamics") {
-      build_physics_grid(gn);
-    }
-  }
+  // Build physics next
+  build_physics_grids(pg_names);
 
-  if (m_grids.find(m_ref_grid_name)==m_grids.end()) {
-    build_physics_grid(m_ref_grid_name);
-  }
+  EKAT_REQUIRE_MSG (m_grids.find(m_ref_grid_name)!=m_grids.end(),
+      "Error! Reference grid '" + m_ref_grid_name + "' was not among the requested grids.\n");
 
   // Clean up temporaries used during grid initialization
   cleanup_grid_init_data_f90 ();
@@ -197,59 +195,74 @@ void DynamicsDrivenGridsManager::build_dynamics_grid () {
 }
 
 void DynamicsDrivenGridsManager::
-build_physics_grid (const std::string& name) {
+build_physics_grids (const std::vector<std::string>& pg_names) {
 
-  // Build only if not built yet
-  if (m_grids.find(name)==m_grids.end()) {
+  bool has_pgN = false;
+  for (const auto& name : pg_names) {
+    if (m_grid_codes.at(name)>0) {
+      has_pgN = true;
+      break;
+    }
+  }
 
-    // Get the grid pg_type
-    const int pg_type = m_grid_codes.at(name);
+  for (const auto& name : pg_names) {
+    // Build only if not built yet
+    if (m_grids.find(name)==m_grids.end()) {
 
-    // Get dimensions and create "empty" grid
-    const int nlev  = get_nlev_f90();
-    const int nlcols = get_num_local_columns_f90 (pg_type % 10);
+      // Get the grid pg_type
+      const int pg_type = m_grid_codes.at(name);
 
-    auto phys_grid = std::make_shared<PointGrid>(name,nlcols,nlev,m_comm);
-    phys_grid->setSelfPointer(phys_grid);
+      // Get dimensions and create "empty" grid
+      const int nlev  = get_nlev_f90();
+      const int nlcols = get_num_local_columns_f90 (pg_type % 10);
 
-    // Create the gids, coords, area views
-    AbstractGrid::dofs_list_type dofs("phys dofs",nlcols);
-    AbstractGrid::geo_view_type  lat("lat",nlcols);
-    AbstractGrid::geo_view_type  lon("lon",nlcols);
-    AbstractGrid::geo_view_type  area("area",nlcols);
-    auto h_dofs = Kokkos::create_mirror_view(dofs);
-    auto h_lat  = Kokkos::create_mirror_view(lat);
-    auto h_lon  = Kokkos::create_mirror_view(lon);
-    auto h_area = Kokkos::create_mirror_view(area);
+      auto phys_grid = std::make_shared<PointGrid>(name,nlcols,nlev,m_comm);
+      phys_grid->setSelfPointer(phys_grid);
 
-    // Get all specs of phys grid cols (gids, coords, area)
-    get_phys_grid_data_f90 (pg_type, h_dofs.data(), h_lat.data(), h_lon.data(), h_area.data());
+      // Create the gids, coords, area views
+      AbstractGrid::dofs_list_type dofs("phys dofs",nlcols);
+      AbstractGrid::geo_view_type  lat("lat",nlcols);
+      AbstractGrid::geo_view_type  lon("lon",nlcols);
+      AbstractGrid::geo_view_type  area("area",nlcols);
+      auto h_dofs = Kokkos::create_mirror_view(dofs);
+      auto h_lat  = Kokkos::create_mirror_view(lat);
+      auto h_lon  = Kokkos::create_mirror_view(lon);
+      auto h_area = Kokkos::create_mirror_view(area);
 
-    Kokkos::deep_copy(dofs,h_dofs);
-    Kokkos::deep_copy(lat, h_lat);
-    Kokkos::deep_copy(lon, h_lon);
-    Kokkos::deep_copy(area,h_area);
+      // Get all specs of phys grid cols (gids, coords, area)
+      get_phys_grid_data_f90 (pg_type, h_dofs.data(), h_lat.data(), h_lon.data(), h_area.data());
+
+      Kokkos::deep_copy(dofs,h_dofs);
+      Kokkos::deep_copy(lat, h_lat);
+      Kokkos::deep_copy(lon, h_lon);
+      Kokkos::deep_copy(area,h_area);
 
 #ifndef NDEBUG
-    // Check that latitude, longitude, and area are valid
-    using KT = KokkosTypes<DefaultDevice>;
-    const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(nlcols,nlev);
-    Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const KT::MemberType& team) {
-      const Int i = team.league_rank();
+      // Check that latitude, longitude, and area are valid
+      using KT = KokkosTypes<DefaultDevice>;
+      const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(nlcols,nlev);
+      Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const KT::MemberType& team) {
+        const Int i = team.league_rank();
 
-      EKAT_KERNEL_ASSERT_MSG(!ekat::impl::is_nan(lat(i)),                   "Error! NaN values detected for latitude.");
-      EKAT_KERNEL_ASSERT_MSG(!ekat::impl::is_nan(lon(i)),                   "Error! NaN values detected for longitude.");
-      EKAT_KERNEL_ASSERT_MSG(area(i) >  0  && !ekat::impl::is_nan(area(i)), "Error! Non-positve or NaN values detected for area.");
-    });
+        EKAT_KERNEL_ASSERT_MSG(!ekat::impl::is_nan(lat(i)),                   "Error! NaN values detected for latitude.");
+        EKAT_KERNEL_ASSERT_MSG(!ekat::impl::is_nan(lon(i)),                   "Error! NaN values detected for longitude.");
+        EKAT_KERNEL_ASSERT_MSG(area(i) >  0  && !ekat::impl::is_nan(area(i)), "Error! Non-positve or NaN values detected for area.");
+      });
 #endif
 
-    // Set dofs and geo data in the grid
-    phys_grid->set_dofs(dofs);
-    phys_grid->set_geometry_data("lat",lat);
-    phys_grid->set_geometry_data("lon",lon);
-    phys_grid->set_geometry_data("area",area);
+      // Set dofs and geo data in the grid
+      phys_grid->set_dofs(dofs);
+      phys_grid->set_geometry_data("lat",lat);
+      phys_grid->set_geometry_data("lon",lon);
+      phys_grid->set_geometry_data("area",area);
 
-    m_grids[name] = phys_grid;
+      if (has_pgN && pg_type==0) {
+        // If we have pgN grids, the ncols dim in Physics GLL should be called "ncols_d"
+        phys_grid->reset_partitioned_dim_name ("ncols_d");
+      }
+
+      m_grids[name] = phys_grid;
+    }
   }
 }
 

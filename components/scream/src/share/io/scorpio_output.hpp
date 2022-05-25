@@ -160,6 +160,8 @@ protected:
   Field get_field(const std::string& name, const bool eval_diagnostic = false);
   void set_diagnostics();
 
+  std::string get_io_tag_name (const FieldTag t, const int extent);
+
   // --- Internal variables --- //
   ekat::Comm                          m_comm;
 

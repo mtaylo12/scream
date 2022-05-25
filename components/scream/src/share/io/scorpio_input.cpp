@@ -442,7 +442,12 @@ AtmosphereInput::get_vec_of_dims(const FieldLayout& layout)
   // for those dimensions to be used with IO
   std::vector<std::string> dims_names(layout.rank());
   for (int i=0; i<layout.rank(); ++i) {
-    dims_names[i] = scorpio::get_nc_tag_name(layout.tag(i),layout.dim(i));
+    const auto tag = layout.tag(i);
+    const auto dim = layout.dim(i);
+
+    const auto is_partitioned = m_io_grid->get_partitioned_dim_tag()==tag;
+    dims_names[i] = is_partitioned && m_io_grid->has_partitioned_dim_name() ?
+                m_io_grid->get_partitioned_dim_name() : scorpio::get_nc_tag_name(tag,dim);
   }
 
   return dims_names;

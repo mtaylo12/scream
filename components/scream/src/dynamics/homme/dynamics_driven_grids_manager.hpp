@@ -31,7 +31,7 @@ protected:
 #endif
 
   void build_dynamics_grid ();
-  void build_physics_grid  (const std::string& name);
+  void build_physics_grids (const std::vector<std::string>& pg_names);
 
 protected:
 
