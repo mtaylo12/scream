@@ -35,6 +35,9 @@ AtmosphereProcess (const ekat::Comm& comm, const ekat::ParameterList& params)
 }
 
 void AtmosphereProcess::initialize (const TimeStamp& t0, const RunType run_type) {
+
+  std::cout << this->name() << " starting init..." << std::endl;
+  
   if (this->type()!=AtmosphereProcessType::Group) {
     start_timer (m_timer_prefix + this->name() + "::init");
   }
@@ -44,9 +47,15 @@ void AtmosphereProcess::initialize (const TimeStamp& t0, const RunType run_type)
   if (this->type()!=AtmosphereProcessType::Group) {
     stop_timer (m_timer_prefix + this->name() + "::init");
   }
+
+  std::cout << "..." << this->name() << " ending init" << std::endl;
+    
 }
 
 void AtmosphereProcess::run (const int dt) {
+
+  std::cout << this->name() << " starting run..." << std::endl;
+
   start_timer (m_timer_prefix + this->name() + "::run");
   if (m_params.get("Enable Precondition Checks", true)) {
     // Run 'pre-condition' property checks stored in this AP
@@ -76,6 +85,8 @@ void AtmosphereProcess::run (const int dt) {
     update_time_stamps ();
   }
   stop_timer (m_timer_prefix + this->name() + "::run");
+
+  std::cout << "..." << this->name() << " ending run" << std::endl;
 }
 
 void AtmosphereProcess::finalize (/* what inputs? */) {
