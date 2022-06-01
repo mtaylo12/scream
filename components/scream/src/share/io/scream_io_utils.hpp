@@ -18,27 +18,29 @@ enum class FrequencyUnits {
   Months
 };
 
-inline std::string e3str(const FrequencyUnits u) {
+inline std::string e2str(const FrequencyUnits u) {
   using FU = FrequencyUnits;
   switch (u) {
     case FU::Steps:   return "STEPS";
     case FU::Hours:   return "HOURS";
-    case FU::Hours:   return "DAYS";
-    case FU::Hours:   return "MONTHS";
-    default: return "NEVER";
+    case FU::Days:    return "DAYS";
+    case FU::Months:  return "MONTHS";
+    case FU::Never:   return "NEVER";
+    default: return "INVALID";
   }
 }
 
-inline FrequencyUnits str2units (const std::string& s) {
+inline FrequencyUnits str2freq_units (const std::string& s) {
   auto s_ci = ekat::upper_case(s);
   using FU = FrequencyUnits;
-  for (auto e : {OAT::Instant, OAT::Max, OAT::Min, OAT::Average}) {
+  for (auto e : {FU::Steps, FU::Hours, FU::Days, FU::Months, FU::Never}) {
     if (s_ci==e2str(e)) {
       return e;
     }
   }
 
-  return OAT::Invalid;
+  EKAT_ERROR_MSG ("Error! Invalid value for 'Frequency Units': " + s + "\n");
+  return FU::Invalid;
 }
 
 enum class OutputAvgType {
@@ -76,11 +78,46 @@ inline OutputAvgType str2avg (const std::string& s) {
 struct IOControl {
   // A non-positive frequency can be used to signal IO disabled
   int frequency = -1;
+  FrequencyUnits frequency_units;
+  util::TimeStamp last_write;
   int nsteps_since_last_write;
-  FrequencyUnits freq_units;
 
-  bool is_write_step () {
-    return frequency>0 && (nsteps_since_last_write % frequency == 0);
+  void udpate_time (const util::TimeStamp& ts) {
+    EKAT_REQUIRE_MSG (last_write<=ts,
+        "Error! Time stamp preceeds that of last write.\n");
+    using FU = FrequencyUnits;
+    switch (frequency_units) {
+      case FU::Steps:
+        ++nsteps_since_last_write;
+        break;
+      case FU::Hours:
+        nsteps_since_last_write = ts.seconds_from(last_write) / 3600;
+        break;
+      case FU::Days:
+        nsteps_since_last_write = ts.seconds_from(last_write) / 86400;
+        break;
+      case FU::Months:
+      {
+        const int y_new = ts.get_year();
+        const int y_old = last_write.get_year();
+        int n = 12*(y_new-y_old);
+        if (y_new!=y_old) {
+          n += (ts.get_month()-1) + (12-last_write.get_month());
+        } else {
+          n += (ts.get_month() - last_write.get_month() - 1);
+        }
+        if (ts.get_day()>last_write.get_day()) {
+          ++n;
+        }
+
+        return n;
+      }
+      default: return -1;
+    }
+    current_time = ts;
+  }
+  bool is_write_step () const {
+    return frequency_units!=FrequencyUnits::Never && (nsteps_since_last_write % frequency == 0);
   }
 };
 

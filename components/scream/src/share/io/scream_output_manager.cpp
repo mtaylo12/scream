@@ -59,10 +59,14 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   // Output control
   auto& out_control_pl = m_params.sublist("Output Control");
   m_output_control.frequency  = out_control_pl.get<int>("Frequency");
-  m_output_control.frequency_units = out_control_pl.get<std::string>("Frequency Units");
+  m_output_control.frequency_units = str2freq_units(out_control_pl.get<std::string>("Frequency Units"));
   m_output_control.nsteps_since_last_write = 0;
 
-  m_io_enabled = m_output_control.frequency_unit
+  m_io_enabled = m_output_control.frequency_units!=FrequencyUnits::Never;
+
+  if (not m_io_enabled) {
+    return;
+  }
 
   // File specs
   m_output_file_specs.max_snapshots_in_file = m_params.get<int>("Max Snapshots Per File");
@@ -100,7 +104,7 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
       // Output control
       auto& pl = m_params.sublist("Checkpoint Control");
       m_checkpoint_control.frequency  = pl.get<int>("Frequency");
-      m_checkpoint_control.frequency_units = pl.get<std::string>("Frequency Units");
+      m_checkpoint_control.frequency_units = str2freq_units(pl.get<std::string>("Frequency Units"));
       m_checkpoint_control.nsteps_since_last_write = 0;
 
       // File specs
@@ -159,6 +163,10 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
 /*===============================================================================================*/
 void OutputManager::run(const util::TimeStamp& timestamp)
 {
+  if (not m_io_enabled) {
+    return;
+  }
+
   using namespace scorpio;
 
   // Check if we need to open a new file
@@ -292,7 +300,7 @@ compute_filename (const IOControl& control,
     filename += "." + e2str(m_avg_type);
   }
   if (file_specs.filename_with_frequency) {
-    filename += "." + control.frequency_units+ "_x" + std::to_string(control.frequency);
+    filename += "." + e2str(control.frequency_units) + "_x" + std::to_string(control.frequency);
   }
   if (file_specs.filename_with_mpiranks) {
     filename += ".np" + std::to_string(m_io_comm.size());
