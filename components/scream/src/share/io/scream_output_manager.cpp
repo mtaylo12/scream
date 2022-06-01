@@ -53,9 +53,6 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   m_is_restarted_run = (case_t0<run_t0);
   m_is_model_restart_output = is_model_restart_output;
 
-  // Register all potential diagnostics
-  register_diagnostics();
-
   // Check for model restart output
   set_params(params,field_mgrs);
 
@@ -65,6 +62,8 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   m_output_control.frequency_units = out_control_pl.get<std::string>("Frequency Units");
   m_output_control.nsteps_since_last_write = 0;
 
+  m_io_enabled = m_output_control.frequency_unit
+
   // File specs
   m_output_file_specs.max_snapshots_in_file = m_params.get<int>("Max Snapshots Per File");
   m_output_file_specs.num_snapshots_in_file = 0;
@@ -72,6 +71,9 @@ setup (const ekat::Comm& io_comm, const ekat::ParameterList& params,
   m_output_file_specs.filename_with_mpiranks    = out_control_pl.get("MPI Ranks in Filename",false);
   m_output_file_specs.filename_with_avg_type    = out_control_pl.get("AVG Type in Filename",true);
   m_output_file_specs.filename_with_frequency   = out_control_pl.get("Frequency in Filename",true);
+
+  // Register all potential diagnostics
+  register_diagnostics();
 
   // For each grid, create a separate output stream.
   if (field_mgrs.size()==1) {

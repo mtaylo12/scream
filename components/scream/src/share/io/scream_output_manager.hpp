@@ -121,6 +121,9 @@ protected:
   using output_type     = AtmosphereOutput;
   using output_ptr_type = std::shared_ptr<output_type>;
 
+  // Quick flag to know if we can skip all setup/run (e.g., user disabled IO)
+  bool m_io_enabled;
+
   std::vector<output_ptr_type>   m_output_streams;
   ekat::Comm                     m_io_comm;
   ekat::ParameterList            m_params;

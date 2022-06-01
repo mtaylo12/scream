@@ -9,6 +9,38 @@
 namespace scream
 {
 
+enum class FrequencyUnits {
+  Invalid,
+  Never,
+  Steps,
+  Hours,
+  Days,
+  Months
+};
+
+inline std::string e3str(const FrequencyUnits u) {
+  using FU = FrequencyUnits;
+  switch (u) {
+    case FU::Steps:   return "STEPS";
+    case FU::Hours:   return "HOURS";
+    case FU::Hours:   return "DAYS";
+    case FU::Hours:   return "MONTHS";
+    default: return "NEVER";
+  }
+}
+
+inline FrequencyUnits str2units (const std::string& s) {
+  auto s_ci = ekat::upper_case(s);
+  using FU = FrequencyUnits;
+  for (auto e : {OAT::Instant, OAT::Max, OAT::Min, OAT::Average}) {
+    if (s_ci==e2str(e)) {
+      return e;
+    }
+  }
+
+  return OAT::Invalid;
+}
+
 enum class OutputAvgType {
   Instant,
   Max,
@@ -45,7 +77,7 @@ struct IOControl {
   // A non-positive frequency can be used to signal IO disabled
   int frequency = -1;
   int nsteps_since_last_write;
-  std::string frequency_units;
+  FrequencyUnits freq_units;
 
   bool is_write_step () {
     return frequency>0 && (nsteps_since_last_write % frequency == 0);
