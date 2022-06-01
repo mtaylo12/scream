@@ -15,8 +15,8 @@ TEST_CASE("rrtmgp_test_heating") {
     auto flux_dn = real2d("flux_dn", 1, 2);
     auto heating = real2d("heating", 1, 1);
     // Simple no-heating test
-    // NOTE: parallel_for because we need to do these in a kernel on the device
-    parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
+    // NOTE: yakl::fortran::parallel_for because we need to do these in a kernel on the device
+    yakl::fortran::parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
         dp(1, 1) = 10;
         flux_up(1, 1) = 1.0;
         flux_up(1, 2) = 1.0;
@@ -27,8 +27,8 @@ TEST_CASE("rrtmgp_test_heating") {
     REQUIRE(heating.createHostCopy()(1,1) == 0);
 
     // Simple net postive heating; net flux into layer should be 1.0
-    // NOTE: parallel_for because we need to do these in a kernel on the device
-    parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
+    // NOTE: yakl::fortran::parallel_for because we need to do these in a kernel on the device
+    yakl::fortran::parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
         flux_up(1, 1) = 1.0;
         flux_up(1, 2) = 1.0;
         flux_dn(1, 1) = 1.5;
@@ -43,8 +43,8 @@ TEST_CASE("rrtmgp_test_heating") {
     REQUIRE(heating.createHostCopy()(1,1) == heating_ref);
 
     // Simple net negative heating; net flux into layer should be -1.0
-    // NOTE: parallel_for because we need to do these in a kernel on the device
-    parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
+    // NOTE: yakl::fortran::parallel_for because we need to do these in a kernel on the device
+    yakl::fortran::parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
         flux_up(1,1) = 1.5;
         flux_up(1,2) = 0.5;
         flux_dn(1,1) = 1.0;
@@ -75,7 +75,7 @@ TEST_CASE("rrtmgp_test_mixing_ratio_to_cloud_mass") {
     auto cloud_mass = real2d("cloud_mass", 1, 1);
 
     // Test with cell completely filled with cloud
-    parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
+    yakl::fortran::parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
         dp(1,1) = 10.0;
         mixing_ratio(1,1) = 0.0001;
         cloud_fraction(1,1) = 1.0;
@@ -85,7 +85,7 @@ TEST_CASE("rrtmgp_test_mixing_ratio_to_cloud_mass") {
     REQUIRE(cloud_mass.createHostCopy()(1,1) == cloud_mass_ref);
 
     // Test with no cloud
-    parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
+    yakl::fortran::parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
         dp(1,1) = 10.0;
         mixing_ratio(1,1) = 0.0;
         cloud_fraction(1,1) = 0.0;
@@ -97,7 +97,7 @@ TEST_CASE("rrtmgp_test_mixing_ratio_to_cloud_mass") {
      // Test with empty clouds (cloud fraction but with no associated mixing ratio)
      // This case could happen if we use a total cloud fraction, but compute layer
      // cloud mass separately for liquid and ice.
-    parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
+    yakl::fortran::parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
         dp(1,1) = 10.0;
         mixing_ratio(1,1) = 0.0;
         cloud_fraction(1,1) = 0.1;
@@ -107,7 +107,7 @@ TEST_CASE("rrtmgp_test_mixing_ratio_to_cloud_mass") {
     REQUIRE(cloud_mass.createHostCopy()(1,1) == cloud_mass_ref);
  
     // Test with cell half filled with cloud
-    parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
+    yakl::fortran::parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
         dp(1,1) = 10.0;
         mixing_ratio(1,1) = 0.0001;
         cloud_fraction(1,1) = 0.5;
@@ -133,7 +133,7 @@ TEST_CASE("rrtmgp_test_limit_to_bounds") {
     auto arr_limited = real2d("arr_limited", 2, 2);
 
     // Setup dummy array
-    parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
+    yakl::fortran::parallel_for(1, YAKL_LAMBDA(int /* dummy */) {
         arr(1,1) = 1.0;
         arr(1,2) = 2.0;
         arr(2,1) = 3.0;
@@ -268,7 +268,7 @@ TEST_CASE("rrtmgp_test_compute_broadband_surface_flux") {
     auto sw_bnd_flux_dir = real3d("sw_bnd_flux_dir", ncol, nlay+1, nbnd);
     auto sw_bnd_flux_dif = real3d("sw_bnd_flux_dif", ncol, nlay+1, nbnd);
     logger->info("Populate band-resolved 3d fluxes for test case with only transition band flux...\n");
-    parallel_for(Bounds<3>(nbnd,nlay+1,ncol), YAKL_LAMBDA(int ibnd, int ilay, int icol) {
+    yakl::fortran::parallel_for(yakl::fortran::SimpleBounds<3>(nbnd,nlay+1,ncol), YAKL_LAMBDA(int ibnd, int ilay, int icol) {
         if (ibnd < 10) {
             sw_bnd_flux_dir(icol,ilay,ibnd) = 0;
             sw_bnd_flux_dif(icol,ilay,ibnd) = 0;
@@ -300,7 +300,7 @@ TEST_CASE("rrtmgp_test_compute_broadband_surface_flux") {
     // ---------------------------------
     // Test case, only flux in NIR bands
     logger->info("Populate band-resolved 3d fluxes for test case with only NIR flux...\n");
-    parallel_for(Bounds<3>(nbnd,nlay+1,ncol), YAKL_LAMBDA(int ibnd, int ilay, int icol) {
+    yakl::fortran::parallel_for(yakl::fortran::SimpleBounds<3>(nbnd,nlay+1,ncol), YAKL_LAMBDA(int ibnd, int ilay, int icol) {
         if (ibnd < 10) {
             sw_bnd_flux_dir(icol,ilay,ibnd) = 1;
             sw_bnd_flux_dif(icol,ilay,ibnd) = 1;
@@ -331,7 +331,7 @@ TEST_CASE("rrtmgp_test_compute_broadband_surface_flux") {
     // ---------------------------------
     // Test case, only flux in VIS bands
     logger->info("Populate band-resolved 3d fluxes for test case with only VIS/UV flux...\n");
-    parallel_for(Bounds<3>(nbnd,nlay+1,ncol), YAKL_LAMBDA(int ibnd, int ilay, int icol) {
+    yakl::fortran::parallel_for(yakl::fortran::SimpleBounds<3>(nbnd,nlay+1,ncol), YAKL_LAMBDA(int ibnd, int ilay, int icol) {
         if (ibnd < 10) {
             sw_bnd_flux_dir(icol,ilay,ibnd) = 0;
             sw_bnd_flux_dif(icol,ilay,ibnd) = 0;
@@ -362,7 +362,7 @@ TEST_CASE("rrtmgp_test_compute_broadband_surface_flux") {
     // ---------------------------------
     // Test case, only flux in all bands
     logger->info("Populate band-resolved 3d fluxes for test with non-zero flux in all bands...\n");
-    parallel_for(Bounds<3>(nbnd,nlay+1,ncol), YAKL_LAMBDA(int ibnd, int ilay, int icol) {
+    yakl::fortran::parallel_for(yakl::fortran::SimpleBounds<3>(nbnd,nlay+1,ncol), YAKL_LAMBDA(int ibnd, int ilay, int icol) {
         if (ibnd < 10) {
             sw_bnd_flux_dir(icol,ilay,ibnd) = 1.0;
             sw_bnd_flux_dif(icol,ilay,ibnd) = 2.0;
@@ -435,10 +435,10 @@ TEST_CASE("rrtmgp_test_check_range") {
     memset(dummy, 0.1);
     REQUIRE(scream::rrtmgp::check_range(dummy, 0.0, 1.0, "dummy") == true);
     // At least one value below lower bound
-    parallel_for(1, YAKL_LAMBDA (int i) {dummy(i, 1) = -0.1;});
+    yakl::fortran::parallel_for(1, YAKL_LAMBDA (int i) {dummy(i, 1) = -0.1;});
     REQUIRE(scream::rrtmgp::check_range(dummy, 0.0, 1.0, "dummy") == false);
     // At least one value above upper bound
-    parallel_for(1, YAKL_LAMBDA (int i) {dummy(i, 1) = 1.1;});
+    yakl::fortran::parallel_for(1, YAKL_LAMBDA (int i) {dummy(i, 1) = 1.1;});
     REQUIRE(scream::rrtmgp::check_range(dummy, 0.0, 1.0, "dummy") == false);
     dummy.deallocate();
     if (yakl::isInitialized()) { yakl::finalize(); }
