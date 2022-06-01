@@ -298,6 +298,7 @@ void RRTMGPRadiation::initialize_impl(const RunType /* run_type */) {
 // =========================================================================================
 
 void RRTMGPRadiation::run_impl (const int dt) {
+
   using PF = scream::PhysicsFunctions<DefaultDevice>;
   using PC = scream::physics::Constants<Real>;
   using CO = scream::ColumnOps<DefaultDevice,Real>;
@@ -661,7 +662,7 @@ void RRTMGPRadiation::run_impl (const int dt) {
   const int kbot = nlay+1;
 
   // Compute diffuse flux as difference between total and direct; use YAKL parallel_for here because these are YAKL objects
-  parallel_for(Bounds<3>(m_nswbands,m_nlay+1,m_ncol), YAKL_LAMBDA(int ibnd, int ilev, int icol) {
+  yakl::fortran::parallel_for(yakl::fortran::SimpleBounds<3>(m_nswbands,m_nlay+1,m_ncol), YAKL_LAMBDA(int ibnd, int ilev, int icol) {
     sw_bnd_flux_dif(icol,ilev,ibnd) = sw_bnd_flux_dn(icol,ilev,ibnd) - sw_bnd_flux_dir(icol,ilev,ibnd);
   });
 
