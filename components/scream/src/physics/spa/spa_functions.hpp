@@ -203,6 +203,7 @@ struct SPAFunctions
     const SPAOutput&  data_out);
 
   static void get_remap_weights_from_file(
+    const ekat::Comm&        comm,
     const std::string&       remap_file_name,
     const Int                ncols_scream,
     gid_type                 min_dof,
