@@ -339,7 +339,20 @@ void SPAFunctions<S,D>
   // Note, the remap file doesn't follow a conventional grid setup so
   // here we manually go through all of the input steps rather than
   // use the scorpio_input class.
-  //
+
+  // Global IDs for horizontal DOF for this rank.
+  auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
+  Kokkos::deep_copy(dofs_gids_h,dofs_gids);
+  int num_local_dof = dofs_gids_h.extent_int(0);
+
+  // Global IDs and weights corresponding only to DOF for this rank.
+  // FIXME: at the time of writing, gid_type is an int (see
+  // FIXME: abstract_grid.hpp). We need to know this type in order to pass
+  // FIXME: messages.
+  std::vector<int>  my_row_global_h(num_local_dof);
+  std::vector<int>  my_col_global_h(num_local_dof);
+  std::vector<Real> my_S_global_h(num_local_dof);
+
   // SCREAM's interface to Scorpio currently only provides the ability to read
   // all data into a global array. Doing this on all processes exhausts memory,
   // so instead we have the "root" rank do it and send everyone else what they
@@ -421,30 +434,58 @@ void SPAFunctions<S,D>
     // Finished, close the file
     scorpio::eam_pio_closefile(remap_file_name);
 
-    // Broadcast information to all ranks.
+    // Get numbers of local dofs from all ranks.
+    std::vector<int> num_local_dof_for_rank(comm.size());
+    MPI_Gather(&num_local_dof, 1, MPI_INT, &num_local_dof_for_rank[0], 1,
+               MPI_INT, comm.root_rank(), comm.mpi_comm());
+
+    // Compute displacements for scattering row_global_h.
+    std::vector<int> displs(comm.size(), 0);
+    for (size_t p = 1; p < displs.size(); ++p) {
+      displs[p] = displs[p-1] + num_local_dof_for_rank[p];
+    }
+
+    // Scatter row_global_h, col_global_h, and S_global_h to all ranks.
+    MPI_Scatterv(&row_global_h(0), &num_local_dof_for_rank[0], &displs[0],
+                 MPI_INT, &my_row_global_h[0], num_local_dof, MPI_INT,
+                 comm.root_rank(), comm.mpi_comm());
+    MPI_Scatterv(&col_global_h(0), &num_local_dof_for_rank[0], &displs[0],
+                 MPI_INT, &my_col_global_h[0], num_local_dof, MPI_INT,
+                 comm.root_rank(), comm.mpi_comm());
+    // FIXME: Assume double precision for the moment.
+    MPI_Scatterv(&S_global_h(0), &num_local_dof_for_rank[0], &displs[0],
+                 MPI_DOUBLE, &my_S_global_h[0], num_local_dof, MPI_DOUBLE,
+                 comm.root_rank(), comm.mpi_comm());
+  } else {
+    // Send the root rank our local number of DOF.
+    MPI_Gather(&num_local_dof, 1, MPI_INT, NULL, 1, MPI_INT, comm.root_rank(),
+               comm.mpi_comm());
+
+    // Receive row/column global IDs and weights from the root rank.
+    MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
+                 &my_row_global_h[0], num_local_dof, MPI_INT,
+                 comm.root_rank(), comm.mpi_comm());
+    MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
+                 &my_col_global_h[0], num_local_dof, MPI_INT,
+                 comm.root_rank(), comm.mpi_comm());
+    MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
+                 &my_S_global_h[0], num_local_dof, MPI_INT,
+                 comm.root_rank(), comm.mpi_comm());
   }
 
-  // Receive information from the root rank.
-  // TODO
-  /*
   // Retain only the information needed on this rank.
-  auto dofs_gids_h = Kokkos::create_mirror_view(dofs_gids);
-  Kokkos::deep_copy(dofs_gids_h,dofs_gids);
   std::vector<int> local_idx;
-  std::vector<int> global_idx;
-  for (int idx=0;idx<spa_horiz_interp.length;idx++) {
+  for (int idx=0; idx < num_local_dof; ++idx) {
     // Note, the dof ids may start with 0 or 1. In the data they certainly
     // start with 1. This maps 1 -> true min dof.
-    int dof = row_global_h(idx) - (1-min_dof);
+    int dof = my_row_global_h[idx] - (1-min_dof);
     for (int id=0;id<dofs_gids_h.extent_int(0);id++) {
       if (dof == dofs_gids_h(id)) {
-        global_idx.push_back(idx);
         local_idx.push_back(id);
         break;
       }
     }
   }
-  */
 
   // Now that we have the full list of indexes in the global remap data that
   // correspond to local columns we can construct the spa_horiz_weights data.
@@ -457,13 +498,12 @@ void SPAFunctions<S,D>
   auto source_grid_loc_h = Kokkos::create_mirror_view(spa_horiz_interp.source_grid_loc);
   auto target_grid_loc_h = Kokkos::create_mirror_view(spa_horiz_interp.target_grid_loc);
   for (size_t idx=0;idx<local_idx.size();idx++) {
-    int ii = global_idx[idx];
-    weights_h(idx)         = S_global_h(ii);
+    weights_h(idx)         = my_S_global_h[idx];
     target_grid_loc_h(idx) = local_idx[idx];
     // Note that the remap column location starts with 1.
     // Here we want the index in a the source data vector corresponding to
     // this column which needs to start with 0 since cpp starts with 0.
-    source_grid_loc_h(idx) = col_global_h(ii) - 1;
+    source_grid_loc_h(idx) = my_col_global_h[idx] - 1;
   }
 
   Kokkos::deep_copy(spa_horiz_interp.weights        , weights_h        );
