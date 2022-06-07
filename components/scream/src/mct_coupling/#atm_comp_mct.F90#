@@ -1,4 +1,4 @@
-module atm_comp_mct
+otomodule atm_comp_mct
 
   ! Modules used acros atm_xyz_mct routines
 
@@ -52,6 +52,7 @@ CONTAINS
     use scream_cpl_indices, only: scream_set_cpl_indices, num_cpl_exports, &
                                   num_cpl_imports, num_scream_imports, &
                                   scr_names_x2a, scr_names_a2x, index_x2a, index_a2x, vec_comp_x2a, vec_comp_a2x, &
+                                  vec_comp_x2a, vec_comp_a2x, &
                                   can_be_exported_during_init
     use ekat_string_utils,  only: string_f2c
     use kinds,              only: homme_iulog=>iulog

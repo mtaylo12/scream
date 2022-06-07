@@ -56,7 +56,6 @@ module scream_cpl_indices
 
     allocate (can_be_exported_during_init(num_cpl_exports))
 
-
     ! Initialize arrays
     do i=1,num_cpl_imports
       index_x2a(i) = i
