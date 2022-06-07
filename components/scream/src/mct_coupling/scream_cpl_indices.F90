@@ -10,8 +10,8 @@ module scream_cpl_indices
   integer, public :: num_cpl_imports, num_cpl_exports
 
   ! cpl indices for import/export fields
-  !integer(kind=c_int), public, allocatable, target :: index_x2a(:)
-  !integer(kind=c_int), public, allocatable, target :: index_a2x(:)
+  integer(kind=c_int), public, allocatable, target :: index_x2a(:)
+  integer(kind=c_int), public, allocatable, target :: index_a2x(:)
 
   ! Names used by scream for import/export fields
   character(len=32,kind=c_char), public, allocatable, target :: scr_names_a2x(:)
@@ -23,11 +23,6 @@ module scream_cpl_indices
 
   ! Stores whether or not field can be exported during initialization
   logical(kind=c_bool), public, allocatable, target :: can_be_exported_during_init(:)
-
-  ! Stores constant multiple to apply at import/export. Eg. a field whose interpretation
-  ! in SCREAM and CPL are the inverse of each other should store -1.
-  real(kind=c_double), public, allocatable, target :: constant_multiple_a2x(:)
-  real(kind=c_double), public, allocatable, target :: constant_multiple_x2a(:)
 
   public :: scream_set_cpl_indices
 
@@ -50,8 +45,8 @@ module scream_cpl_indices
     num_cpl_imports = size(x2a%rAttr,1)
     num_cpl_exports = size(a2x%rAttr,1)
 
-    !allocate (index_x2a(num_cpl_imports))
-    !allocate (index_a2x(num_cpl_exports))
+    allocate (index_x2a(num_cpl_imports))
+    allocate (index_a2x(num_cpl_exports))
 
     allocate (scr_names_x2a(num_cpl_imports))
     allocate (scr_names_a2x(num_cpl_exports))
@@ -61,22 +56,18 @@ module scream_cpl_indices
 
     allocate (can_be_exported_during_init(num_cpl_exports))
 
-    allocate (constant_multiple_a2x(num_cpl_imports))
-    allocate (constant_multiple_x2a(num_cpl_exports))
 
     ! Initialize arrays
     do i=1,num_cpl_imports
-      !index_x2a(i) = i
+      index_x2a(i) = i
       scr_names_x2a(i) = 'unused'
       vec_comp_x2a(i) = -1
-      constant_multiple_x2a(i) = 1
     enddo
     do i=1,num_cpl_exports
-      !index_a2x(i) = i
+      index_a2x(i) = i
       scr_names_a2x(i) = 'set_zero'
       vec_comp_a2x(i) = -1
       can_be_exported_during_init(i) = .true.
-      constant_multiple_a2x(i) = 1
     enddo
 
     ! The following are imported to SCREAM
@@ -92,12 +83,6 @@ module scream_cpl_indices
 
     vec_comp_x2a(mct_avect_indexra(x2a,'Faxx_taux')) = 0
     vec_comp_x2a(mct_avect_indexra(x2a,'Faxx_tauy')) = 1
-
-    scr_names_x2a(mct_avect_indexra(x2a,'Faxx_taux')) = -1
-    scr_names_x2a(mct_avect_indexra(x2a,'Faxx_tauy')) = -1
-    scr_names_x2a(mct_avect_indexra(x2a,'Faxx_sen'))  = -1
-    scr_names_x2a(mct_avect_indexra(x2a,'Faxx_evap')) = -1
-    scr_names_x2a(mct_avect_indexra(x2a,'Faxx_lwup')) = -1
 
     ! The following are exported from SCREAM
     scr_names_a2x(mct_avect_indexra(a2x,'Sa_z'))       = 'Sa_z'

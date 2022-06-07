@@ -116,9 +116,9 @@ void scream_create_atm_instance (const MPI_Fint f_comm, const int atm_id,
 }
 
 void scream_setup_surface_coupling (
-    const char*& x2a_names, /*const int*& x2a_indices,*/ double*& cpl_x2a_ptr, const int*& vec_comp_x2a,
+    const char*& x2a_names, const int*& x2a_indices, double*& cpl_x2a_ptr, const int*& vec_comp_x2a,
     const int& num_cpl_imports, const int& num_scream_imports,
-    const char*& a2x_names, /*const int*& a2x_indices,*/ double*& cpl_a2x_ptr, const int*& vec_comp_a2x,
+    const char*& a2x_names, const int*& a2x_indices, double*& cpl_a2x_ptr, const int*& vec_comp_a2x,
     const bool*& can_be_exported_during_init, const int& num_cpl_exports)
 {
   fpe_guard_wrapper([&](){
@@ -139,10 +139,10 @@ void scream_setup_surface_coupling (
     // are 1-based, we convert to 0-based
     sc->set_num_fields(num_cpl_imports,num_scream_imports,num_cpl_exports);
     for (int i=0; i<num_cpl_imports; ++i) {
-      sc->register_import(names_in[i],/*x2a_indices[i]-1*/i,vec_comp_x2a[i]);
+      sc->register_import(names_in[i],x2a_indices[i]-1,vec_comp_x2a[i]);
     }
     for (int i=0; i<num_cpl_exports; ++i) {
-      sc->register_export(names_out[i],/*a2x_indices[i]-1*/i,vec_comp_a2x[i],can_be_exported_during_init[i]);
+      sc->register_export(names_out[i],a2x_indices[i]-1,vec_comp_a2x[i],can_be_exported_during_init[i]);
     }
 
     sc->registration_ends(cpl_x2a_ptr, cpl_a2x_ptr);
