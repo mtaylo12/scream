@@ -10,7 +10,7 @@ include (${EKAT_MACH_FILES_PATH}/mpi/other.cmake)
 
 set(EKAT_MPIRUN_EXE "jsrun -E LD_PRELOAD=/opt/ibm/spectrum_mpi/lib/pami_471/libpami.so" CACHE STRING "" FORCE)
 
-set(EKAT_MPI_NP_FLAG "--np" CACHE STRING "")
+set(EKAT_MPI_NP_FLAG "--np" CACHE STRING "" FORCE)
 
 # set up TPLs
 #set(NetCDF_Fortran_PATH /usr/gdata/climdat/libs/netcdf-fortran/install/lassen/fortran CACHE STRING "")
